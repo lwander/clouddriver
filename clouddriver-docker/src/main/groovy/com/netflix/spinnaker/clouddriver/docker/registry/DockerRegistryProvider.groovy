@@ -14,12 +14,20 @@
  * limitations under the License.
  */
 
-package com.netflix.spinnaker.clouddriver.kubernetes.registry.api.docker.v2.client
+package com.netflix.spinnaker.clouddriver.docker.registry
 
-import groovy.transform.ToString
+import com.netflix.spinnaker.clouddriver.core.CloudProvider
+import org.springframework.stereotype.Component
 
-@ToString(includeNames = true)
-class DockerRegistryTags {
-  String name
-  List<String> tags
+import java.lang.annotation.Annotation
+
+/**
+ * DockerRegistry declaration as a {@link CloudProvider}.
+ */
+@Component
+class DockerRegistryProvider implements CloudProvider {
+  final String id = "dockerRegistry"
+  final String displayName = "Docker Registry"
+  // The docker registry is only used for caching, so none of the op/ endpoints will be hit.
+  final Class<Annotation> operationAnnotationType = Annotation.class
 }

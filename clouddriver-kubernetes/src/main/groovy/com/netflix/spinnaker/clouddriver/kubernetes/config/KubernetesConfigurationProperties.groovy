@@ -16,7 +16,6 @@
 
 package com.netflix.spinnaker.clouddriver.kubernetes.config
 
-import com.netflix.spinnaker.clouddriver.kubernetes.registry.config.DockerRegistryConfigurationProperties
 import groovy.transform.ToString
 
 @ToString(includeNames = true)
@@ -26,18 +25,11 @@ class KubernetesConfigurationProperties {
     String name
     String environment
     String accountType
-    // Kubernetes endpoint address.
     String master
-    // Username required for authenticating with Kubernetes endpoint.
     String username
-    // Password required for authenticating with Kubernetes endpoint.
     String password
-    // (Default = ['default']) Namespaces to be managed.
     List<String> namespaces
-    // Credentials for authenticating with Docker Registry (must conform to v2 API).
-    List<DockerRegistryConfigurationProperties> registries
   }
 
   List<ManagedAccount> accounts = []
 }
-

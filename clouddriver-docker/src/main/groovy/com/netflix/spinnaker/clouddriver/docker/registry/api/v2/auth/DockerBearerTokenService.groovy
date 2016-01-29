@@ -18,16 +18,17 @@ package com.netflix.spinnaker.clouddriver.docker.registry.api.v2.auth
 
 import retrofit.RestAdapter
 import retrofit.http.GET
+import retrofit.http.Headers
 import retrofit.http.Path
 import retrofit.http.Query
 
-class DockerRequestBearerToken {
+class DockerBearerTokenService {
   private Map<String, DockerBearerToken> fullScopeToToken
-  private Map<String, BearerTokenService> realmToService
+  private Map<String, TokenService> realmToService
 
-  DockerRequestBearerToken() {
+  DockerBearerTokenService() {
     fullScopeToToken = new HashMap<String, DockerBearerToken>()
-    realmToService = new HashMap<String, BearerTokenService>()
+    realmToService = new HashMap<String, TokenService>()
   }
 
   private static formatFullScope(String realm, String path, String service, String scope) {
@@ -39,7 +40,7 @@ class DockerRequestBearerToken {
 
     if (tokenService == null) {
       def builder = new RestAdapter.Builder().setEndpoint(realm).setLogLevel(RestAdapter.LogLevel.FULL).build()
-      tokenService = builder.create(BearerTokenService.class)
+      tokenService = builder.create(TokenService.class)
       realmToService[realm] = tokenService
     }
 
@@ -64,8 +65,9 @@ class DockerRequestBearerToken {
     return token
   }
 
-  private interface BearerTokenService {
+  private interface TokenService {
     @GET("/{path}")
+    @Headers("User-Agent: Spinnaker-Clouddriver")
     DockerBearerToken getToken(@Path(value="path", encode=false) String path, @Query("service") String service, @Query("scope") String scope)
   }
 }

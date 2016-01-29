@@ -16,7 +16,6 @@
 
 package com.netflix.spinnaker.clouddriver.kubernetes.security;
 
-import com.netflix.spinnaker.clouddriver.kubernetes.registry.security.DockerRegistryCredentials;
 import io.fabric8.kubernetes.client.KubernetesClient;
 
 import java.util.List;
@@ -24,12 +23,10 @@ import java.util.List;
 public class KubernetesCredentials {
   private final KubernetesClient client;
   private final List<String> namespaces;
-  private final List<DockerRegistryCredentials> registries;
 
-  public KubernetesCredentials(List<String> namespaces, KubernetesClient client, List<DockerRegistryCredentials> registries) {
+  public KubernetesCredentials(List<String> namespaces, KubernetesClient client) {
     this.client = client;
     this.namespaces = namespaces;
-    this.registries = registries;
   }
 
   public KubernetesClient getClient() {
@@ -38,10 +35,6 @@ public class KubernetesCredentials {
 
   public List<String> getNamespaces() {
     return namespaces;
-  }
-
-  public List<DockerRegistryCredentials> getRegistries() {
-    return registries;
   }
 
   public Boolean isRegisteredNamespace(String namespace) {

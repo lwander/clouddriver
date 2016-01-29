@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Google, Inc.
+ * Copyright 2016 Google, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,25 +16,84 @@
 
 package com.netflix.spinnaker.clouddriver.docker.registry.security
 
-import com.netflix.spinnaker.clouddriver.docker.registry.api.v2.client.DockerRegistryClient
+import com.netflix.spinnaker.cats.module.CatsModule
+import com.netflix.spinnaker.cats.provider.ProviderSynchronizerTypeWrapper
 import com.netflix.spinnaker.clouddriver.docker.registry.config.DockerRegistryConfigurationProperties
+import com.netflix.spinnaker.clouddriver.security.AccountCredentialsRepository
+import com.netflix.spinnaker.clouddriver.security.CredentialsInitializerSynchronizable
+import com.netflix.spinnaker.clouddriver.security.ProviderUtils
 import org.apache.log4j.Logger
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.config.ConfigurableBeanFactory
+import org.springframework.context.ApplicationContext
+import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.context.annotation.Scope
 import org.springframework.stereotype.Component
 
 @Component
 @Configuration
-class DockerRegistryCredentialsInitializer {
+class DockerRegistryCredentialsInitializer implements CredentialsInitializerSynchronizable {
   private static final Logger log = Logger.getLogger(this.class.simpleName)
 
-  static final DockerRegistryCredentials InitializeCredentials(DockerRegistryConfigurationProperties account) {
-    try {
-      def client = new DockerRegistryClient(account.address, account.email, account.username, account.password)
-      print ",, testing client\n"
-      print ",, ${client.auth.getToken('https://auth.docker.io/', 'token', 'registry.docker.io', 'repository:library/ubuntu:pull', true)}\n"
-      return new DockerRegistryCredentials(account.repositories, client)
-    } catch (e) {
-      log.info "Could not connect to registry ${account.address}: ${e}"
+  @Autowired
+  AccountCredentialsRepository accountCredentialsRepository
+
+  @Autowired
+  ApplicationContext appContext;
+
+  /*
+  @Autowired
+  List<ProviderSynchronizerTypeWrapper> providerSynchronizerTypeWrappers
+  */
+
+  @Bean
+  List<? extends DockerRegistryNamedAccountCredentials> dockerRegistryNamedAccountCredentials(
+    DockerRegistryConfigurationProperties dockerRegistryConfigurationProperties) {
+    synchronizeDockerRegistryAccounts(dockerRegistryConfigurationProperties, null)
+  }
+
+  @Override
+  String getCredentialsSynchronizationBeanName() {
+    return "synchronizeDockerRegistryAccounts"
+  }
+
+  @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+  @Bean
+  List<?> synchronizeDockerRegistryAccounts(DockerRegistryConfigurationProperties dockerRegistryConfigurationProperties, CatsModule catsModule) {
+    def (ArrayList<DockerRegistryConfigurationProperties.ManagedAccount> accountsToAdd, List<String> namesOfDeletedAccounts) =
+    ProviderUtils.calculateAccountDeltas(accountCredentialsRepository, DockerRegistryNamedAccountCredentials,
+      dockerRegistryConfigurationProperties.accounts)
+
+    print ",, hi"
+    accountsToAdd.each { DockerRegistryConfigurationProperties.ManagedAccount managedAccount ->
+      try {
+        def dockerRegistryAccount = new DockerRegistryNamedAccountCredentials(managedAccount.name,
+          managedAccount.environment ?: managedAccount.name,
+          managedAccount.accountType ?: managedAccount.name,
+          managedAccount.address, managedAccount.username,
+          managedAccount.password, managedAccount.email,
+          managedAccount.repositories)
+
+        accountCredentialsRepository.save(managedAccount.name, dockerRegistryAccount)
+      } catch (e) {
+        log.info "Could not load account ${managedAccount.name} for DockerRegistry.", e
+      }
     }
+
+    ProviderUtils.unscheduleAndDeregisterAgents(namesOfDeletedAccounts, catsModule)
+
+    /*
+     * Uncomment this when we are ready to add support for loading DockerRegistry
+     * accounts without restarting clouddriver
+     * TODO(lwander)
+    if (accountsToAdd && catsModule) {
+      ProviderUtils.synchronizeAgentProviders(appContext, providerSynchronizerTypeWrappers)
+    }
+    */
+
+    accountCredentialsRepository.all.findAll {
+      it instanceof DockerRegistryNamedAccountCredentials
+    } as List
   }
 }

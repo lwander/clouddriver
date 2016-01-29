@@ -16,9 +16,6 @@
 
 package com.netflix.spinnaker.clouddriver.kubernetes.security;
 
-import com.netflix.spinnaker.clouddriver.kubernetes.registry.config.DockerRegistryConfigurationProperties;
-import com.netflix.spinnaker.clouddriver.kubernetes.registry.security.DockerRegistryCredentials;
-import com.netflix.spinnaker.clouddriver.kubernetes.registry.security.DockerRegistryCredentialsInitializer;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
@@ -28,95 +25,83 @@ import com.netflix.spinnaker.clouddriver.security.AccountCredentials;
 import java.util.*;
 
 public class KubernetesNamedAccountCredentials implements AccountCredentials<KubernetesCredentials> {
-  public KubernetesNamedAccountCredentials(String accountName, String environment, String accountType, String master, String username, String password, List<String> namespaces, List<DockerRegistryConfigurationProperties> registries) {
-    this(accountName, environment, accountType, master, username, password, namespaces, registries, null);
-  }
-
-  public KubernetesNamedAccountCredentials(String accountName, String environment, String accountType, String master, String username, String password, List<String> namespaces, List<DockerRegistryConfigurationProperties> registries, List<String> requiredGroupMembership) {
-    this.accountName = accountName;
-    this.environment = environment;
-    this.accountType = accountType;
-    this.master = master;
-    this.username = username;
-    this.password = password;
-    this.registries = registries;
-    this.namespaces = (namespaces == null || namespaces.size() == 0) ? Arrays.asList("default") : namespaces;
-    // TODO(lwander): what is this?
-    this.requiredGroupMembership = requiredGroupMembership == null ? Collections.emptyList() : Collections.unmodifiableList(requiredGroupMembership);
-    this.credentials = buildCredentials();
-  }
-
-  @Override
-  public String getName() {
-    return accountName;
-  }
-
-  @Override
-  public String getEnvironment() {
-    return environment;
-  }
-
-  @Override
-  public String getAccountType() {
-    return accountType;
-  }
-
-  @Override
-  public String getCloudProvider() {
-    return CLOUD_PROVIDER;
-  }
-
-  public KubernetesCredentials getCredentials() {
-    return credentials;
-  }
-
-  private KubernetesCredentials buildCredentials() {
-    Config config = new ConfigBuilder().withMasterUrl(master).withUsername(username).withPassword(password).withTrustCerts(true).build();
-    KubernetesClient client;
-    try {
-      client = new DefaultKubernetesClient(config);
-    } catch (Exception e) {
-      throw new RuntimeException("failed to create credentials", e);
+    public KubernetesNamedAccountCredentials(String accountName, String environment, String accountType, String master, String username, String password, List<String> namespaces) {
+      this(accountName, environment, accountType, master, username, password, namespaces, null);
     }
 
-    if (this.registries == null || this.registries.size() == 0) {
-      throw new RuntimeException("Account \"" + accountName + "\" has not configured any registries, and will not be able to deploy any containers. Aborting.");
+    public KubernetesNamedAccountCredentials(String accountName, String environment, String accountType, String master, String username, String password, List<String> namespaces, List<String> requiredGroupMembership) {
+      this.accountName = accountName;
+      this.environment = environment;
+      this.accountType = accountType;
+      this.master = master;
+      this.username = username;
+      this.password = password;
+      this.namespaces = (namespaces == null || namespaces.size() == 0) ? Arrays.asList("default") : namespaces;
+      // TODO(lwander): what is this?
+      this.requiredGroupMembership = requiredGroupMembership == null ? Collections.emptyList() : Collections.unmodifiableList(requiredGroupMembership);
+      this.credentials = buildCredentials();
     }
 
-    ArrayList<DockerRegistryCredentials> registryCredentials = new ArrayList<>(this.registries.size());
-    for (int i = 0; i < this.registries.size(); i++) {
-      registryCredentials.add(DockerRegistryCredentialsInitializer.InitializeCredentials(this.registries.get(i)));
+    @Override
+    public String getName() {
+      return accountName;
     }
 
-    return new KubernetesCredentials(this.namespaces, client, registryCredentials);
-  }
+    @Override
+    public String getEnvironment() {
+      return environment;
+    }
 
-  private static String getLocalName(String fullUrl) {
-    return fullUrl.substring(fullUrl.lastIndexOf('/') + 1);
-  }
+    @Override
+    public String getAccountType() {
+      return accountType;
+    }
 
-  @Override
-  public String getProvider() {
-    return getCloudProvider();
-  }
+    @Override
+    public String getCloudProvider() {
+      return CLOUD_PROVIDER;
+    }
 
-  public String getAccountName() {
-    return accountName;
-  }
+    public KubernetesCredentials getCredentials() {
+      return credentials;
+    }
 
-  public List<String> getRequiredGroupMembership() {
-    return requiredGroupMembership;
-  }
+    private KubernetesCredentials buildCredentials() {
+      Config config = new ConfigBuilder().withMasterUrl(master).withUsername(username).withPassword(password).withTrustCerts(true).build();
+      KubernetesClient client;
+      try {
+        client = new DefaultKubernetesClient(config);
+      } catch (Exception e) {
+        throw new RuntimeException("failed to create credentials", e);
+      }
+      return new KubernetesCredentials(this.namespaces, client);
+    }
 
-  private static final String CLOUD_PROVIDER = "kubernetes";
-  private final String accountName;
-  private final String environment;
-  private final String accountType;
-  private final String master;
-  private final String username;
-  private final String password;
-  private final List<String> namespaces;
-  private final KubernetesCredentials credentials;
-  private final List<String> requiredGroupMembership;
-  private final List<DockerRegistryConfigurationProperties> registries;
+    private static String getLocalName(String fullUrl) {
+        return fullUrl.substring(fullUrl.lastIndexOf('/') + 1);
+    }
+
+    @Override
+    public String getProvider() {
+      return getCloudProvider();
+    }
+
+    public String getAccountName() {
+      return accountName;
+    }
+
+    public List<String> getRequiredGroupMembership() {
+      return requiredGroupMembership;
+    }
+
+    private static final String CLOUD_PROVIDER = "kubernetes";
+    private final String accountName;
+    private final String environment;
+    private final String accountType;
+    private final String master;
+    private final String username;
+    private final String password;
+    private final List<String> namespaces;
+    private final KubernetesCredentials credentials;
+    private final List<String> requiredGroupMembership;
 }

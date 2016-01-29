@@ -63,19 +63,18 @@ class KubernetesCredentialsInitializer implements CredentialsInitializerSynchron
   List<?> synchronizeKubernetesAccounts(KubernetesConfigurationProperties kubernetesConfigurationProperties, CatsModule catsModule) {
     def (ArrayList<KubernetesConfigurationProperties.ManagedAccount> accountsToAdd, List<String> namesOfDeletedAccounts) =
       ProviderUtils.calculateAccountDeltas(accountCredentialsRepository,
-        KubernetesNamedAccountCredentials,
-        kubernetesConfigurationProperties.accounts)
+                                           KubernetesNamedAccountCredentials,
+                                           kubernetesConfigurationProperties.accounts)
 
     accountsToAdd.each { KubernetesConfigurationProperties.ManagedAccount managedAccount ->
       try {
         def kubernetesAccount = new KubernetesNamedAccountCredentials(managedAccount.name,
-          managedAccount.environment ?: managedAccount.name,
-          managedAccount.accountType ?: managedAccount.name,
-          managedAccount.master,
-          managedAccount.username,
-          managedAccount.password,
-          managedAccount.namespaces,
-          managedAccount.registries)
+                                                                      managedAccount.environment ?: managedAccount.name,
+                                                                      managedAccount.accountType ?: managedAccount.name,
+                                                                      managedAccount.master,
+                                                                      managedAccount.username,
+                                                                      managedAccount.password,
+                                                                      managedAccount.namespaces)
 
         accountCredentialsRepository.save(managedAccount.name, kubernetesAccount)
       } catch (e) {

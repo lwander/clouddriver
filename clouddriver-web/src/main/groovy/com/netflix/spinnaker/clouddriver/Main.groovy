@@ -24,6 +24,7 @@ import com.netflix.spinnaker.clouddriver.core.RetrofitConfig
 import com.netflix.spinnaker.clouddriver.deploy.config.DeployConfiguration
 import com.netflix.spinnaker.clouddriver.google.GoogleConfiguration
 import com.netflix.spinnaker.clouddriver.kubernetes.KubernetesConfiguration
+import com.netflix.spinnaker.clouddriver.docker.registry.DockerRegistryConfiguration
 import com.netflix.spinnaker.clouddriver.security.config.SecurityConfig
 import com.netflix.spinnaker.clouddriver.titan.TitanConfiguration
 import org.springframework.boot.actuate.autoconfigure.ManagementSecurityAutoConfiguration
@@ -51,6 +52,7 @@ import java.security.Security
   TitanConfiguration,
   GoogleConfiguration,
   KubernetesConfiguration,
+  DockerRegistryConfiguration,
   CloudFoundryConfig,
   AzureConfiguration,
   SecurityConfig

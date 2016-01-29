@@ -22,7 +22,7 @@ public class DockerRegistryCredentials {
   private final DockerRegistryClient client;
   private final List<String> repositories;
 
-  public DockerRegistryCredentials(List<String> repositories, DockerRegistryClient client) {
+  public DockerRegistryCredentials(DockerRegistryClient client, List<String> repositories) {
     this.client = client;
     this.repositories = repositories;
   }

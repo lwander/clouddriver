@@ -16,28 +16,60 @@
 
 package com.netflix.spinnaker.clouddriver.docker.registry.api.v2.client
 
-import com.netflix.spinnaker.clouddriver.docker.registry.api.v2.auth.DockerRequestBearerToken
+import com.netflix.spinnaker.clouddriver.docker.registry.api.v2.auth.DockerBearerTokenService
+import retrofit.Callback
+import retrofit.RestAdapter
+import retrofit.RetrofitError
+import retrofit.client.Response
 import retrofit.http.GET
+import retrofit.http.Headers
 import retrofit.http.Path
 
 class DockerRegistryClient {
-  private DockerRequestBearerToken tokenService
+  private DockerBearerTokenService tokenService
 
   private String address
   private String email
   private String username
   private String password
+  private DockerRegistryService registryService
+  private Map<String, DockerRegistryTags> tags
 
   DockerRegistryClient(String address, String email, String username, String password) {
     this.address = address
     this.email = email
     this.username = username
     this.password = password
-    this.tokenService = new DockerRequestBearerToken()
+    this.tokenService = new DockerBearerTokenService()
+    this.registryService = new RestAdapter.Builder().setEndpoint(address).setLogLevel(RestAdapter.LogLevel.FULL).build().create(DockerRegistryService)
   }
 
   interface DockerRegistryService {
     @GET("/v2/{repository}/tags/list")
-    DockerRegistryTags getTags(@Path(value="repository", encode=false) String repository)
+    @Headers("User-Agent: Spinnaker-Clouddriver")
+    void getTags(@Path(value="repository", encode=false) String repository, Callback<DockerRegistryTags> callback)
   }
+
+  public void requestTags(String repository) {
+    print ",, $repository"
+    registryService.getTags(repository, RequestResource.Request(tags, repository))
+  }
+
+  private static class RequestResource<T> {
+    static Callback<T> Request(Map<String, T> store, String key) {
+      return new Callback<T>() {
+        @Override
+        void success(T t, Response response) {
+          print ",, response $response"
+        }
+
+        @Override
+        void failure(RetrofitError error) {
+          if (error.response.status == 401) {
+          }
+        }
+      }
+    }
+  }
+
 }

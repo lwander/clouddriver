@@ -20,15 +20,23 @@ import groovy.transform.ToString
 
 @ToString(includeNames = true)
 class DockerRegistryConfigurationProperties {
-  // Docker registry username.
-  String username
-  // Docker registry password.
-  String password
-  // Docker registry user email address.
-  String email
-  // Address of the registry.
-  String address
-  // List of all repositories to index. Can be of the form <user>/<repo>,
-  // or <library> for repositories like 'ubuntu'.
-  List<String> repositories
+  @ToString(includeNames = true)
+  static class ManagedAccount {
+    String name
+    String environment
+    String accountType
+    // Docker registry username.
+    String username
+    // Docker registry password.
+    String password
+    // Docker registry user email address.
+    String email
+    // Address of the registry.
+    String address
+    // List of all repositories to index. Can be of the form <user>/<repo>,
+    // or <library> for repositories like 'ubuntu'.
+    List<String> repositories
+  }
+
+  List<ManagedAccount> accounts = []
 }
