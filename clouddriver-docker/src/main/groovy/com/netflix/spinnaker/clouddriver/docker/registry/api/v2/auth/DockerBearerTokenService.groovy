@@ -16,23 +16,116 @@
 
 package com.netflix.spinnaker.clouddriver.docker.registry.api.v2.auth
 
+import com.netflix.spinnaker.clouddriver.docker.registry.api.v2.exception.DockerRegistryAuthenticationException
 import retrofit.RestAdapter
+import retrofit.client.Header
 import retrofit.http.GET
 import retrofit.http.Headers
 import retrofit.http.Path
 import retrofit.http.Query
 
 class DockerBearerTokenService {
-  private Map<String, DockerBearerToken> fullScopeToToken
   private Map<String, TokenService> realmToService
+  private String basicAuthenticate
 
-  DockerBearerTokenService() {
-    fullScopeToToken = new HashMap<String, DockerBearerToken>()
+  DockerBearerTokenService(String username, String password) {
     realmToService = new HashMap<String, TokenService>()
+    if (username) {
+      basicAuthenticate = new String(Base64.encoder.encode(("${username}:${password}").bytes))
+      basicAuthenticate = "Basic $basicAuthenticate"
+    } else {
+      basicAuthenticate = null
+    }
   }
 
-  private static formatFullScope(String realm, String path, String service, String scope) {
-    return "${realm}:${path}:${service}:${scope}"
+  /*
+   * Parsed according to http://www.ietf.org/rfc/rfc2617.txt
+   */
+  public AuthenticateDetails parseBearerAuthenticateHeader(String header) {
+    String bearerPrefix = "bearer "
+    String realmKey = "realm"
+    String serviceKey = "service"
+    String scopeKey = "scope"
+    AuthenticateDetails result = new AuthenticateDetails()
+
+    if (!bearerPrefix.equalsIgnoreCase(header.substring(0, bearerPrefix.length()))) {
+      throw new DockerRegistryAuthenticationException("Docker registry must support 'Bearer' authentication.")
+    } else {
+      header = header.substring(bearerPrefix.length())
+    }
+
+    // Each parameter has the form <token>=(<token>|<quoted-string>).
+    while (header.length() > 0) {
+      String key
+      String value
+
+      def keyEnd = header.indexOf("=")
+      if (keyEnd == -1) {
+        throw new DockerRegistryAuthenticationException("Www-Authenticate header terminated with junk: '$header'.")
+      }
+
+      key = header.substring(0, keyEnd)
+      header = header.substring(keyEnd + 1)
+      if (header.length() == 0) {
+        throw new DockerRegistryAuthenticationException("Www-Authenticate header unmatched parameter key: '$key'.")
+      }
+
+      // Parse a quoted string.
+      if (header[0] == '"') {
+        header = header.substring(1)
+
+        def valueEnd = header.indexOf('"')
+        if (valueEnd == -1) {
+          throw new DockerRegistryAuthenticationException('Www-Authenticate header has unterminated " (quotation mark).')
+        }
+
+        value = header.substring(0, valueEnd)
+        header = header.substring(valueEnd + 1)
+
+        if (header.length() != 0) {
+          if (header[0] != ",") {
+            throw new DockerRegistryAuthenticationException('Www-Authenticate header params must be separated by , (comma).')
+          }
+          header = header.substring(1)
+        }
+      } else { // Parse an unquoted token.
+        def valueEnd = header.indexOf(",")
+
+        // In the case of the last parameter, there will be no terminating ',' character.
+        if (valueEnd == -1) {
+          value = header
+          header = ""
+        } else {
+          value = header.substring(0, valueEnd)
+          header = header.substring(valueEnd + 1)
+        }
+      }
+
+      if (key.equalsIgnoreCase(realmKey)) {
+        def url = new URL(value)
+        result.realm = url.protocol + "://" + url.authority
+        result.path = url.path
+        if (result.path.length() > 0 && result.path[0] == "/") {
+          result.path = result.path.substring(1)
+        }
+      } else if (key.equalsIgnoreCase(serviceKey)) {
+        result.service = value
+      } else if (key.equalsIgnoreCase(scopeKey)) {
+        result.scope = value
+      }
+    }
+
+    if (!result.realm) {
+      throw new DockerRegistryAuthenticationException('Www-Authenticate header must provide "realm" parameter.')
+    }
+    if (!result.service) {
+      throw new DockerRegistryAuthenticationException('Www-Authenticate header must provide "service" parameter.')
+    }
+    if (!result.scope) {
+      throw new DockerRegistryAuthenticationException('Www-Authenticate header must provide "scope" parameter.')
+    }
+
+    return result
   }
 
   private getTokenService(String realm) {
@@ -47,27 +140,57 @@ class DockerBearerTokenService {
     return tokenService
   }
 
-  public DockerBearerToken getToken(String realm, String path, String service, String scope, Boolean refresh) {
-    // Refresh indicates we require a fresh token (maybe the old one has expired)
-    def fullScope = formatFullScope(realm, path, service, scope)
-    if (!refresh) {
-      def token = fullScopeToToken.get(fullScope)
+  public DockerBearerToken getToken(List<Header> headers) {
+    String authenticate = null
 
-      if (token) {
-        return token
+    headers.forEach { header ->
+      if (header.name == "Www-Authenticate") {
+        authenticate = header.value
       }
     }
 
-    def tokenService = getTokenService(realm)
-    def token = tokenService.getToken(path, service, scope)
-    fullScopeToToken[fullScope] = token
+    if (!authenticate) {
+      throw new DockerRegistryAuthenticationException("Www-Authenticate header must be supplied for Docker v2 registry token authentication.")
+    }
 
-    return token
+    def authenticateDetails
+    try {
+      authenticateDetails = parseBearerAuthenticateHeader(authenticate)
+    } catch (Exception e) {
+      throw new DockerRegistryAuthenticationException("Failed to retrieve token: ${e.message}")
+    }
+
+    def tokenService = getTokenService(authenticateDetails.realm)
+    if (basicAuthenticate) {
+      return tokenService.getToken(authenticateDetails.path, authenticateDetails.service, authenticateDetails.scope, basicAuthenticate)
+    }
+    else {
+      return tokenService.getToken(authenticateDetails.path, authenticateDetails.service, authenticateDetails.scope)
+    }
   }
 
   private interface TokenService {
     @GET("/{path}")
-    @Headers("User-Agent: Spinnaker-Clouddriver")
-    DockerBearerToken getToken(@Path(value="path", encode=false) String path, @Query("service") String service, @Query("scope") String scope)
+    @Headers([
+      "User-Agent: Spinnaker-Clouddriver",
+      "Docker-Distribution-API-Version: registry/2.0"
+    ]) // TODO(lwander) get clouddriver version #
+    DockerBearerToken getToken(@Path(value="path", encode=false) String path,
+                               @Query(value="service") String service, @Query(value="scope") String scope)
+
+    @GET("/{path}")
+    @Headers([
+      "User-Agent: Spinnaker-Clouddriver",
+      "Docker-Distribution-API-Version: registry/2.0"
+    ]) // TODO(lwander) get clouddriver version #
+    DockerBearerToken getToken(@Path(value="path", encode=false) String path, @Query(value="service") String service,
+                               @Query(value="scope") String scope, @retrofit.http.Header("Authentication") String basic)
+  }
+
+  private class AuthenticateDetails {
+    String realm
+    String path
+    String service
+    String scope
   }
 }

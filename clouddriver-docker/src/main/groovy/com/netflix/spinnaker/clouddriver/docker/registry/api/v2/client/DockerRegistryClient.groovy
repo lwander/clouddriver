@@ -16,60 +16,78 @@
 
 package com.netflix.spinnaker.clouddriver.docker.registry.api.v2.client
 
+import com.google.gson.GsonBuilder
 import com.netflix.spinnaker.clouddriver.docker.registry.api.v2.auth.DockerBearerTokenService
 import retrofit.Callback
 import retrofit.RestAdapter
 import retrofit.RetrofitError
 import retrofit.client.Response
+import retrofit.converter.GsonConverter
 import retrofit.http.GET
+import retrofit.http.Header
 import retrofit.http.Headers
 import retrofit.http.Path
 
 class DockerRegistryClient {
   private DockerBearerTokenService tokenService
 
-  private String address
-  private String email
-  private String username
-  private String password
   private DockerRegistryService registryService
-  private Map<String, DockerRegistryTags> tags
+  // Temporary replacement for Redis caching
+  private Map<String, DockerRegistryTags> tagsStore
+  private GsonConverter converter
+  private RequestResource requester
 
   DockerRegistryClient(String address, String email, String username, String password) {
-    this.address = address
-    this.email = email
-    this.username = username
-    this.password = password
-    this.tokenService = new DockerBearerTokenService()
+    this.tokenService = new DockerBearerTokenService(username, password)
     this.registryService = new RestAdapter.Builder().setEndpoint(address).setLogLevel(RestAdapter.LogLevel.FULL).build().create(DockerRegistryService)
+    this.requester = new RequestResource()
+    this.converter = new GsonConverter(new GsonBuilder().create())
+    this.tagsStore = new HashMap()
   }
 
   interface DockerRegistryService {
-    @GET("/v2/{repository}/tags/list")
-    @Headers("User-Agent: Spinnaker-Clouddriver")
+    @GET("/{repository}/tags/list")
+    @Headers([
+      "User-Agent: Spinnaker-Clouddriver",
+      "Docker-Distribution-API-Version: registry/2.0"
+    ]) // TODO(lwander) get clouddriver version #
+    DockerRegistryTags getTags(@Path(value="repository", encode=false) String repository, @Header("Authorization") String token)
+
+    @GET("/{repository}/tags/list")
+    @Headers([
+      "User-Agent: Spinnaker-Clouddriver",
+      "Docker-Distribution-API-Version: registry/2.0"
+    ]) // TODO(lwander) get clouddriver version #
     void getTags(@Path(value="repository", encode=false) String repository, Callback<DockerRegistryTags> callback)
   }
 
+  /*
+   * Implements token request flow described here https://docs.docker.com/registry/spec/auth/token/
+   */
   public void requestTags(String repository) {
-    print ",, $repository"
-    registryService.getTags(repository, RequestResource.Request(tags, repository))
+    registryService.getTags(repository, requester.Request({DockerRegistryTags result -> tagsStore[repository] = result}, {String token -> registryService.getTags(repository, "Bearer $token")}))
   }
 
-  private static class RequestResource<T> {
-    static Callback<T> Request(Map<String, T> store, String key) {
+  private class RequestResource<T> {
+    Callback<T> Request(Closure store, Closure<T> retry) {
       return new Callback<T>() {
         @Override
         void success(T t, Response response) {
-          print ",, response $response"
+          T convertedResult = (T) converter.fromBody(response.body, T)
+          store(convertedResult)
         }
 
         @Override
         void failure(RetrofitError error) {
           if (error.response.status == 401) {
+            def tokenResponse = tokenService.getToken(error.response.headers)
+            def token = tokenResponse.bearer_token ?: tokenResponse.token
+            store(retry(token))
+          } else {
+            throw error
           }
         }
       }
     }
   }
-
 }

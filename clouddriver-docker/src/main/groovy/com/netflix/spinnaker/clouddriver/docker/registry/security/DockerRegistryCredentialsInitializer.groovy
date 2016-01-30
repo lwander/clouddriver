@@ -65,7 +65,6 @@ class DockerRegistryCredentialsInitializer implements CredentialsInitializerSync
     ProviderUtils.calculateAccountDeltas(accountCredentialsRepository, DockerRegistryNamedAccountCredentials,
       dockerRegistryConfigurationProperties.accounts)
 
-    print ",, hi"
     accountsToAdd.each { DockerRegistryConfigurationProperties.ManagedAccount managedAccount ->
       try {
         def dockerRegistryAccount = new DockerRegistryNamedAccountCredentials(managedAccount.name,
