@@ -59,6 +59,13 @@ class DockerRegistryClient {
       "Docker-Distribution-API-Version: registry/2.0"
     ]) // TODO(lwander) get clouddriver version #
     void getTags(@Path(value="repository", encode=false) String repository, Callback<DockerRegistryTags> callback)
+
+    @GET("/")
+    @Headers([
+      "User-Agent: Spinnaker-Clouddriver",
+      "Docker-Distribution-API-Version: registry/2.0"
+    ]) // TODO(lwander) get clouddriver version #
+    Response checkVersion()
   }
 
   /*
@@ -66,6 +73,10 @@ class DockerRegistryClient {
    */
   public void requestTags(String repository) {
     registryService.getTags(repository, requester.Request({DockerRegistryTags result -> tagsStore[repository] = result}, {String token -> registryService.getTags(repository, "Bearer $token")}))
+  }
+
+  public Response checkVersion() {
+    registryService.checkVersion()
   }
 
   private class RequestResource<T> {
