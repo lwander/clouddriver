@@ -166,7 +166,7 @@ class KubernetesUtil {
   }
 
   static String loadBalancerKey(String loadBalancer) {
-    return String.format("$LOAD_BALANCER_LABEL_PREFIX%s".toString(), loadBalancer)
+    return String.format("$LOAD_BALANCER_LABEL_PREFIX%s".toString(), loadBalancer).toString()
   }
 
   static String combineAppStackDetail(String appName, String stack, String detail) {
