@@ -190,6 +190,7 @@ class KubernetesApiAdaptor {
     } catch (KubernetesClientException e) {
       e.printStackTrace()
       log.error("$e.message")
+      log.error("$e")
       throw new KubernetesOperationException("Toggle Pod Labels", e)
     }
   }
