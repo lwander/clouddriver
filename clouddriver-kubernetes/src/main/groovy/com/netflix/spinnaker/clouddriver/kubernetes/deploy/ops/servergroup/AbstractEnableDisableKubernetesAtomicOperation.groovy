@@ -18,9 +18,10 @@ package com.netflix.spinnaker.clouddriver.kubernetes.deploy.ops.servergroup
 
 import com.netflix.spinnaker.clouddriver.data.task.Task
 import com.netflix.spinnaker.clouddriver.data.task.TaskRepository
+import com.netflix.spinnaker.clouddriver.kubernetes.api.KubernetesApiConsistency
 import com.netflix.spinnaker.clouddriver.kubernetes.deploy.KubernetesUtil
 import com.netflix.spinnaker.clouddriver.kubernetes.deploy.description.servergroup.KubernetesServerGroupDescription
-import com.netflix.spinnaker.clouddriver.kubernetes.deploy.exception.KubernetesOperationException
+import com.netflix.spinnaker.clouddriver.kubernetes.api.KubernetesOperationException
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperation
 import io.fabric8.kubernetes.api.model.Pod
 
@@ -61,7 +62,7 @@ abstract class AbstractEnableDisableKubernetesAtomicOperation implements AtomicO
 
     def desired = credentials.apiAdaptor.toggleReplicationControllerSpecLabels(namespace, description.serverGroupName, replicationControllerServices, action)
 
-    if (!credentials.apiAdaptor.blockUntilReplicationControllerConsistent(desired)) {
+    if (!KubernetesApiConsistency.blockUntilReplicationControllerConsistent(credentials.apiAdaptor,desired)) {
       throw new KubernetesOperationException("Replication controller failed to reach a consistent state. This is likely a bug with Kubernetes itself.")
     }
 

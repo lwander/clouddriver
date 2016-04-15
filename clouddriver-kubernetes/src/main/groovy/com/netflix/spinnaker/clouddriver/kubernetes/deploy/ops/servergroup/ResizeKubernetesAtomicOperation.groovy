@@ -18,9 +18,10 @@ package com.netflix.spinnaker.clouddriver.kubernetes.deploy.ops.servergroup
 
 import com.netflix.spinnaker.clouddriver.data.task.Task
 import com.netflix.spinnaker.clouddriver.data.task.TaskRepository
+import com.netflix.spinnaker.clouddriver.kubernetes.api.KubernetesApiConsistency
 import com.netflix.spinnaker.clouddriver.kubernetes.deploy.KubernetesUtil
 import com.netflix.spinnaker.clouddriver.kubernetes.deploy.description.servergroup.ResizeKubernetesAtomicOperationDescription
-import com.netflix.spinnaker.clouddriver.kubernetes.deploy.exception.KubernetesOperationException
+import com.netflix.spinnaker.clouddriver.kubernetes.api.KubernetesOperationException
 import com.netflix.spinnaker.clouddriver.orchestration.AtomicOperation
 
 class ResizeKubernetesAtomicOperation implements AtomicOperation<Void> {
@@ -55,7 +56,7 @@ class ResizeKubernetesAtomicOperation implements AtomicOperation<Void> {
 
     def desired = credentials.apiAdaptor.resizeReplicationController(namespace, name, size)
 
-    if (!credentials.apiAdaptor.blockUntilReplicationControllerConsistent(desired)) {
+    if (!KubernetesApiConsistency.blockUntilReplicationControllerConsistent(credentials.apiAdaptor, desired)) {
       throw new KubernetesOperationException("Failed waiting for replication controller to acknowledge its new size. This is likely a bug within Kubernetes itself.")
     }
 

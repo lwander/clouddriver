@@ -18,6 +18,7 @@ package com.netflix.spinnaker.clouddriver.kubernetes.deploy
 
 import com.netflix.frigga.NameValidation
 import com.netflix.frigga.Names
+import com.netflix.spinnaker.clouddriver.kubernetes.api.KubernetesApiAdaptor
 import com.netflix.spinnaker.clouddriver.kubernetes.deploy.description.servergroup.KubernetesImageDescription
 import com.netflix.spinnaker.clouddriver.kubernetes.deploy.exception.KubernetesIllegalArgumentException
 import com.netflix.spinnaker.clouddriver.kubernetes.security.KubernetesCredentials
@@ -27,13 +28,11 @@ import io.fabric8.kubernetes.api.model.extensions.Job
 import org.springframework.beans.factory.annotation.Value
 
 class KubernetesUtil {
-  static String SECURITY_GROUP_LABEL_PREFIX = "security-group-"
-  static String LOAD_BALANCER_LABEL_PREFIX = "load-balancer-"
-  static String REPLICATION_CONTROLLER_LABEL = "replication-controller"
-  static String JOB_LABEL = "job"
+  static public String LOAD_BALANCER_LABEL_PREFIX = KubernetesApiAdaptor.LOAD_BALANCER_LABEL_PREFIX
+  static public String REPLICATION_CONTROLLER_LABEL = KubernetesApiAdaptor.REPLICATION_CONTROLLER_LABEL
+  static public String JOB_LABEL = KubernetesApiAdaptor.JOB_LABEL
   @Value("kubernetes.defaultRegistry:gcr.io")
   static String DEFAULT_REGISTRY
-  private static int SECURITY_GROUP_LABEL_PREFIX_LENGTH = SECURITY_GROUP_LABEL_PREFIX.length()
   private static int LOAD_BALANCER_LABEL_PREFIX_LENGTH = LOAD_BALANCER_LABEL_PREFIX.length()
 
   static String getNextSequence(String clusterName, String namespace, KubernetesCredentials credentials) {
@@ -164,16 +163,6 @@ class KubernetesUtil {
 
   static Boolean isLoadBalancerLabel(String key) {
     key.startsWith(LOAD_BALANCER_LABEL_PREFIX)
-  }
-
-  static List<String> getDescriptionSecurityGroups(ReplicationController rc) {
-    def securityGroups = []
-    rc.spec?.template?.metadata?.labels?.each { key, val ->
-      if (key.startsWith(SECURITY_GROUP_LABEL_PREFIX)) {
-        securityGroups.push(key.substring(SECURITY_GROUP_LABEL_PREFIX_LENGTH, key.length()))
-      }
-    }
-    return securityGroups
   }
 
   static String loadBalancerKey(String loadBalancer) {

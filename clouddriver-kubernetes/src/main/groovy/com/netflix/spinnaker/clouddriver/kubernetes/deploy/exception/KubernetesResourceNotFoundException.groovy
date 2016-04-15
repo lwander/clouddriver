@@ -16,6 +16,7 @@
 
 package com.netflix.spinnaker.clouddriver.kubernetes.deploy.exception
 
+import com.netflix.spinnaker.clouddriver.kubernetes.api.KubernetesOperationException
 import groovy.transform.InheritConstructors
 
 @InheritConstructors
