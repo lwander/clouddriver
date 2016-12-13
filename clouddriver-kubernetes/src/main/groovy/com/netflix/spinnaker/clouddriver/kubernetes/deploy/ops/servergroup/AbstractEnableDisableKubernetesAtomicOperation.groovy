@@ -101,7 +101,7 @@ abstract class AbstractEnableDisableKubernetesAtomicOperation implements AtomicO
 
     def pool = Executors.newWorkStealingPool((int) (pods.size() / 2) + 1)
 
-    if (description.desiredPercent != null) {
+    if (description.desiredPercentage != null) {
       List<Pod> modifiedPods = pods.findAll { pod ->
         KubernetesUtil.getPodLoadBalancerStates(pod).every { it.value == action }
       }
@@ -110,7 +110,7 @@ abstract class AbstractEnableDisableKubernetesAtomicOperation implements AtomicO
         KubernetesUtil.getPodLoadBalancerStates(pod).any { it.value != action }
       }
 
-      pods = EnableDisablePercentCategorizer.getInstancesToModify(modifiedPods, unmodifiedPods, description.desiredPercent)
+      pods = EnableDisablePercentCategorizer.getInstancesToModify(modifiedPods, unmodifiedPods, description.desiredPercentage)
     }
 
     pods.each { Pod pod ->
