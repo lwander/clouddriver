@@ -63,6 +63,8 @@ class DestroyKubernetesAtomicOperation implements AtomicOperation<Void> {
     if (deployment && replicaSet) {
       task.updateStatus BASE_PHASE, "Checking if deployment ${deploymentName} needs to be destroyed..."
       // If we selected to delete the replica set in the currently active deployment, this will delete everything owned by the deployment.
+      print ",, d ${credentials.apiAdaptor.getDeploymentRevision(deployment)}"
+      print ",, r ${credentials.apiAdaptor.getDeploymentRevision(replicaSet)}"
       if (credentials.apiAdaptor.getDeploymentRevision(deployment) == credentials.apiAdaptor.getDeploymentRevision(replicaSet)) {
         task.updateStatus BASE_PHASE, "Destroying deployment ${deploymentName}..."
         if (!credentials.apiAdaptor.deleteDeployment(namespace, deploymentName)) {

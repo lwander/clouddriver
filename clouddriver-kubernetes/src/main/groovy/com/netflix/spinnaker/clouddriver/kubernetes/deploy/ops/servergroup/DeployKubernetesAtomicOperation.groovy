@@ -101,11 +101,6 @@ class DeployKubernetesAtomicOperation implements AtomicOperation<DeploymentResul
       }
     }
 
-
-    task.updateStatus BASE_PHASE, "Sending replica set spec to the Kubernetes master."
-
-    task.updateStatus BASE_PHASE, "Finished creating replica set ${replicaSet.metadata.name}."
-
     if (description.scalingPolicy) {
       task.updateStatus BASE_PHASE, "Attaching a horizontal pod autoscaler..."
 
