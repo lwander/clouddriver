@@ -17,6 +17,7 @@
 package com.netflix.spinnaker.clouddriver
 
 import com.netflix.spinnaker.clouddriver.appengine.AppengineConfiguration
+import com.netflix.spinnaker.clouddriver.appengine.artifacts.StorageConfiguration
 import com.netflix.spinnaker.clouddriver.aws.AwsConfiguration
 import com.netflix.spinnaker.clouddriver.azure.AzureConfiguration
 import com.netflix.spinnaker.clouddriver.core.CloudDriverConfig
@@ -32,7 +33,6 @@ import com.netflix.spinnaker.clouddriver.kubernetes.KubernetesConfiguration
 import com.netflix.spinnaker.clouddriver.openstack.OpenstackConfiguration
 import com.netflix.spinnaker.clouddriver.oraclebmcs.OracleBMCSConfiguration
 import com.netflix.spinnaker.clouddriver.security.config.SecurityConfig
-import com.netflix.spinnaker.clouddriver.appengine.artifacts.StorageConfiguration
 import com.netflix.spinnaker.config.ErrorConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.autoconfigure.batch.BatchAutoConfiguration
