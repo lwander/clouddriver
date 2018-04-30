@@ -1,5 +1,7 @@
 # halconfig
 
+admin.instance.enabled: true
+
 server:
   port: ${services.clouddriver.port:7002}
   address: ${services.clouddriver.host:localhost}
